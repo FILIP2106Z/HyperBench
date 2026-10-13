@@ -1,0 +1,47 @@
+{
+  "entities": {
+    "UserProfile": {
+      "collection": "users",
+      "path": "/users/{userId}",
+      "fields": {
+        "userId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "createdAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" }
+      },
+      "rules": {
+        "read": "request.auth != null && request.auth.uid == userId",
+        "write": "request.auth != null && request.auth.uid == userId"
+      }
+    },
+    "RankingEntry": {
+      "collection": "rankings",
+      "path": "/rankings/{rankingId}",
+      "fields": {
+        "rankingId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "deviceModel": { "type": "string" },
+        "deviceManufacturer": { "type": "string" },
+        "socChipset": { "type": "string" },
+        "benchmarkType": { "type": "string" },
+        "loadPreset": { "type": "string" },
+        "overallScore": { "type": "integer" },
+        "cpuScore": { "type": "integer" },
+        "gpuScore": { "type": "integer" },
+        "ramScore": { "type": "integer" },
+        "diskScore": { "type": "integer" },
+        "tierBadge": { "type": "string" },
+        "createdAt": { "type": "timestamp" }
+      },
+      "rules": {
+        "read": "request.auth != null",
+        "create": "request.auth != null && request.auth.uid == request.resource.data.userId",
+        "update": "request.auth != null && request.auth.uid == resource.data.userId && request.auth.uid == request.resource.data.userId",
+        "delete": "request.auth != null && request.auth.uid == resource.data.userId"
+      }
+    }
+  }
+}

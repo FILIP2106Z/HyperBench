@@ -2,6 +2,7 @@ package com.example
 
 import android.os.Bundle
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CompareArrows
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Icon
@@ -27,6 +29,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,6 +41,7 @@ import com.example.ui.screens.GpuDriverScreen
 import com.example.ui.screens.HardwareInfoScreen
 import com.example.ui.screens.HistoryScreen
 import com.example.ui.screens.HomeScreen
+import com.example.ui.screens.LeaderboardScreen
 import com.example.ui.screens.MultiPlatformDocsScreen
 import com.example.ui.screens.ResultsScreen
 import com.example.ui.screens.UserProfileScreen
@@ -67,7 +71,12 @@ fun BenchmarkApp(viewModel: BenchmarkViewModel) {
     val uiState by viewModel.uiState.collectAsState()
     val historyRuns by viewModel.historyRuns.collectAsState()
     val userProfiles by viewModel.userProfiles.collectAsState()
+    val currentUser by viewModel.currentUser.collectAsState()
+    val authError by viewModel.authError.collectAsState()
+    val isAuthLoading by viewModel.isAuthLoading.collectAsState()
+    val globalRankings by viewModel.globalRankings.collectAsState()
 
+    val context = LocalContext.current
     val showBottomBar = uiState.currentScreen != AppScreen.ACTIVE_BENCHMARK
 
     Scaffold(
@@ -87,7 +96,7 @@ fun BenchmarkApp(viewModel: BenchmarkViewModel) {
                         selected = isHome,
                         onClick = { viewModel.navigateTo(AppScreen.HOME) },
                         icon = { Icon(Icons.Default.Dashboard, contentDescription = "Benchmark") },
-                        label = { Text("Benchmark", fontSize = 11.sp) },
+                        label = { Text("Bench", fontSize = 10.sp) },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = CyberCyan,
                             selectedTextColor = CyberCyan,
@@ -99,10 +108,25 @@ fun BenchmarkApp(viewModel: BenchmarkViewModel) {
                     )
 
                     NavigationBarItem(
+                        selected = currentScreen == AppScreen.LEADERBOARD,
+                        onClick = { viewModel.navigateTo(AppScreen.LEADERBOARD) },
+                        icon = { Icon(Icons.Default.EmojiEvents, contentDescription = "Rankings") },
+                        label = { Text("Rankings", fontSize = 10.sp) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = CyberCyan,
+                            selectedTextColor = CyberCyan,
+                            unselectedIconColor = TextMuted,
+                            unselectedTextColor = TextMuted,
+                            indicatorColor = CyberCyan.copy(alpha = 0.15f)
+                        ),
+                        modifier = Modifier.testTag("nav_rankings")
+                    )
+
+                    NavigationBarItem(
                         selected = currentScreen == AppScreen.COMPARE,
                         onClick = { viewModel.navigateTo(AppScreen.COMPARE) },
                         icon = { Icon(Icons.Default.CompareArrows, contentDescription = "Compare") },
-                        label = { Text("Compare", fontSize = 11.sp) },
+                        label = { Text("Compare", fontSize = 10.sp) },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = CyberCyan,
                             selectedTextColor = CyberCyan,
@@ -117,7 +141,7 @@ fun BenchmarkApp(viewModel: BenchmarkViewModel) {
                         selected = currentScreen == AppScreen.HISTORY,
                         onClick = { viewModel.navigateTo(AppScreen.HISTORY) },
                         icon = { Icon(Icons.Default.History, contentDescription = "History") },
-                        label = { Text("History", fontSize = 11.sp) },
+                        label = { Text("History", fontSize = 10.sp) },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = CyberCyan,
                             selectedTextColor = CyberCyan,
@@ -132,7 +156,7 @@ fun BenchmarkApp(viewModel: BenchmarkViewModel) {
                         selected = currentScreen == AppScreen.HARDWARE_SPECS,
                         onClick = { viewModel.navigateTo(AppScreen.HARDWARE_SPECS) },
                         icon = { Icon(Icons.Default.Info, contentDescription = "Specs") },
-                        label = { Text("Specs", fontSize = 11.sp) },
+                        label = { Text("Specs", fontSize = 10.sp) },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = CyberCyan,
                             selectedTextColor = CyberCyan,
@@ -162,6 +186,23 @@ fun BenchmarkApp(viewModel: BenchmarkViewModel) {
                     onSetParticleCount = { viewModel.setGpuParticleCount(it) },
                     onToggleComplexMesh = { viewModel.toggleMeshComplexity(it) },
                     onStartBenchmark = { viewModel.startBenchmark() },
+                    onNavigate = { viewModel.navigateTo(it) }
+                )
+
+                AppScreen.LEADERBOARD -> LeaderboardScreen(
+                    currentUser = currentUser,
+                    isAuthLoading = isAuthLoading,
+                    authError = authError,
+                    rankings = globalRankings,
+                    latestRun = uiState.currentRun ?: uiState.latestCompletedRun,
+                    isUploading = uiState.isUploadingRanking,
+                    onSignInWithGoogle = { activity -> viewModel.signInWithGoogle(activity) },
+                    onSignOutGoogle = { viewModel.signOutGoogle() },
+                    onSubmitRun = { run ->
+                        viewModel.submitRunToLeaderboard(run) { success, msg ->
+                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                        }
+                    },
                     onNavigate = { viewModel.navigateTo(it) }
                 )
 

@@ -48,7 +48,8 @@ enum class AppScreen {
     HARDWARE_SPECS,
     USER_PROFILE,
     GPU_DRIVER_SETTINGS,
-    MULTI_PLATFORM_DOCS
+    MULTI_PLATFORM_DOCS,
+    LEADERBOARD
 }
 
 data class UiState(
@@ -73,7 +74,9 @@ data class UiState(
     val gpuParticleCount: Int = 3500,
     val gpuIsComplexMesh: Boolean = true,
     val exportJsonString: String? = null,
-    val hardwareProfile: HardwareProfile? = null
+    val hardwareProfile: HardwareProfile? = null,
+    val isUploadingRanking: Boolean = false,
+    val rankingUploadStatus: String? = null
 )
 
 class BenchmarkViewModel(private val context: Context) : ViewModel() {
@@ -82,9 +85,18 @@ class BenchmarkViewModel(private val context: Context) : ViewModel() {
     private val dao = db.benchmarkDao()
     val controller = BenchmarkController(context)
     val telemetryManager = PrivilegedTelemetryManager(context)
+    val authManager = com.example.auth.CloudAuthManager(context)
+    val rankingRepo = com.example.data.RankingRepository(context)
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
+
+    val currentUser = authManager.currentUser
+    val authError = authManager.authError
+    val isAuthLoading = authManager.isLoading
+
+    val globalRankings = rankingRepo.observeGlobalLeaderboard()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val historyRuns: StateFlow<List<BenchmarkRun>> = dao.getAllRuns()
         .map { entities -> entities.map { it.toBenchmarkRun() } }
@@ -104,6 +116,7 @@ class BenchmarkViewModel(private val context: Context) : ViewModel() {
         loadHardwareSpecsSafely()
         initDefaultProfile()
         startTelemetryLoop()
+        authManager.attemptSilentSignIn(viewModelScope)
     }
 
     private fun initDefaultProfile() {
@@ -229,6 +242,34 @@ class BenchmarkViewModel(private val context: Context) : ViewModel() {
     fun updateFrameStats(stats: FrameTimingStats) {
         if (_uiState.value.benchmarkStatus == BenchmarkStatus.RUNNING) {
             _uiState.value = _uiState.value.copy(activeFrameStats = stats)
+        }
+    }
+
+    fun signInWithGoogle(activity: android.app.Activity) {
+        authManager.signInWithGoogle(activity, viewModelScope)
+    }
+
+    fun signOutGoogle() {
+        authManager.signOut(viewModelScope)
+    }
+
+    fun submitRunToLeaderboard(run: BenchmarkRun, onComplete: (Boolean, String) -> Unit) {
+        val user = authManager.currentUser.value
+        if (user == null) {
+            onComplete(false, "Please sign in with Google to publish score to global leaderboard")
+            return
+        }
+        _uiState.value = _uiState.value.copy(isUploadingRanking = true, rankingUploadStatus = "Uploading score to global cloud...")
+        viewModelScope.launch {
+            val res = rankingRepo.submitRunToLeaderboard(run, user)
+            if (res.isSuccess) {
+                _uiState.value = _uiState.value.copy(isUploadingRanking = false, rankingUploadStatus = "Score successfully ranked!")
+                onComplete(true, "Your score of ${run.overallScore} pts was published to the global rankings!")
+            } else {
+                val err = res.exceptionOrNull()?.localizedMessage ?: "Failed to upload score"
+                _uiState.value = _uiState.value.copy(isUploadingRanking = false, rankingUploadStatus = "Upload failed: $err")
+                onComplete(false, err)
+            }
         }
     }
 
