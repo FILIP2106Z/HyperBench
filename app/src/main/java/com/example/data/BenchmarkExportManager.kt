@@ -1,7 +1,6 @@
 package com.example.data
 
 import com.example.model.BenchmarkRun
-import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -11,66 +10,69 @@ object BenchmarkExportManager {
     private const val SCHEMA_VERSION = "2.1.0"
 
     fun exportToJson(run: BenchmarkRun): String {
-        val json = JSONObject()
-        json.put("schemaVersion", SCHEMA_VERSION)
-        json.put("app", "HyperBench")
-        json.put("id", run.id)
-        json.put("timestamp", run.timestamp)
-        json.put("dateFormatted", SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(run.timestamp)))
-        json.put("deviceModel", run.deviceModel)
-        json.put("deviceManufacturer", run.deviceManufacturer)
-        json.put("osVersion", run.osVersion)
-        json.put("benchmarkType", run.type.name)
-        json.put("benchmarkMode", run.mode.name)
-        json.put("durationSec", run.durationSec)
-        json.put("overallScore", run.overallScore)
-        json.put("thermalThrottlingDetected", run.thermalThrottlingDetected)
-        json.put("stabilityRating", run.stabilityRating)
+        val dateFormatted = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(run.timestamp))
+        val sb = StringBuilder()
+        sb.append("{\n")
+        sb.append("  \"schemaVersion\": \"$SCHEMA_VERSION\",\n")
+        sb.append("  \"app\": \"HyperBench\",\n")
+        sb.append("  \"id\": ${run.id},\n")
+        sb.append("  \"timestamp\": ${run.timestamp},\n")
+        sb.append("  \"dateFormatted\": \"$dateFormatted\",\n")
+        sb.append("  \"deviceModel\": \"${run.deviceModel}\",\n")
+        sb.append("  \"deviceManufacturer\": \"${run.deviceManufacturer}\",\n")
+        sb.append("  \"osVersion\": \"${run.osVersion}\",\n")
+        sb.append("  \"benchmarkType\": \"${run.type.name}\",\n")
+        sb.append("  \"benchmarkMode\": \"${run.mode.name}\",\n")
+        sb.append("  \"durationSec\": ${run.durationSec},\n")
+        sb.append("  \"overallScore\": ${run.overallScore},\n")
+        sb.append("  \"thermalThrottlingDetected\": ${run.thermalThrottlingDetected},\n")
+        sb.append("  \"stabilityRating\": \"${run.stabilityRating}\"")
 
         run.cpuResult?.let { cpu ->
-            val cpuObj = JSONObject()
-            cpuObj.put("singleCoreScore", cpu.singleCoreScore)
-            cpuObj.put("multiCoreScore", cpu.multiCoreScore)
-            cpuObj.put("singleCoreMops", cpu.singleCoreMops)
-            cpuObj.put("multiCoreMops", cpu.multiCoreMops)
-            cpuObj.put("coreCount", cpu.coreCount)
-            cpuObj.put("scalingEfficiency", cpu.scalingEfficiency)
-            cpuObj.put("matrixGflops", cpu.matrixGflops)
-            cpuObj.put("cryptoHashMbps", cpu.cryptoHashMbps)
-            cpuObj.put("totalCpuScore", cpu.totalCpuScore)
-            json.put("cpu", cpuObj)
+            sb.append(",\n  \"cpu\": {\n")
+            sb.append("    \"singleCoreScore\": ${cpu.singleCoreScore},\n")
+            sb.append("    \"multiCoreScore\": ${cpu.multiCoreScore},\n")
+            sb.append("    \"singleCoreMops\": ${cpu.singleCoreMops},\n")
+            sb.append("    \"multiCoreMops\": ${cpu.multiCoreMops},\n")
+            sb.append("    \"coreCount\": ${cpu.coreCount},\n")
+            sb.append("    \"scalingEfficiency\": ${cpu.scalingEfficiency},\n")
+            sb.append("    \"matrixGflops\": ${cpu.matrixGflops},\n")
+            sb.append("    \"cryptoHashMbps\": ${cpu.cryptoHashMbps},\n")
+            sb.append("    \"totalCpuScore\": ${cpu.totalCpuScore}\n")
+            sb.append("  }")
         }
 
         run.ramResult?.let { ram ->
-            val ramObj = JSONObject()
-            ramObj.put("readBandwidthGbps", ram.readBandwidthGbps)
-            ramObj.put("writeBandwidthGbps", ram.writeBandwidthGbps)
-            ramObj.put("accessLatencyNs", ram.accessLatencyNs)
-            ramObj.put("ramScore", ram.ramScore)
-            json.put("ram", ramObj)
+            sb.append(",\n  \"ram\": {\n")
+            sb.append("    \"readBandwidthGbps\": ${ram.readBandwidthGbps},\n")
+            sb.append("    \"writeBandwidthGbps\": ${ram.writeBandwidthGbps},\n")
+            sb.append("    \"accessLatencyNs\": ${ram.accessLatencyNs},\n")
+            sb.append("    \"ramScore\": ${ram.ramScore}\n")
+            sb.append("  }")
         }
 
         run.diskResult?.let { disk ->
-            val diskObj = JSONObject()
-            diskObj.put("seqWriteMbps", disk.seqWriteMbps)
-            diskObj.put("seqReadMbps", disk.seqReadMbps)
-            diskObj.put("randomWriteIops", disk.randomWriteIops)
-            diskObj.put("randomReadIops", disk.randomReadIops)
-            diskObj.put("diskScore", disk.diskScore)
-            json.put("disk", diskObj)
+            sb.append(",\n  \"disk\": {\n")
+            sb.append("    \"seqWriteMbps\": ${disk.seqWriteMbps},\n")
+            sb.append("    \"seqReadMbps\": ${disk.seqReadMbps},\n")
+            sb.append("    \"randomWriteIops\": ${disk.randomWriteIops},\n")
+            sb.append("    \"randomReadIops\": ${disk.randomReadIops},\n")
+            sb.append("    \"diskScore\": ${disk.diskScore}\n")
+            sb.append("  }")
         }
 
         run.gpuResult?.let { gpu ->
-            val gpuObj = JSONObject()
-            gpuObj.put("avgFps", gpu.avgFps)
-            gpuObj.put("low1Fps", gpu.low1Fps)
-            gpuObj.put("low01Fps", gpu.low01Fps)
-            gpuObj.put("frameStabilityPercent", gpu.frameStabilityPercent)
-            gpuObj.put("particleCount", gpu.particleCount)
-            gpuObj.put("gpuScore", gpu.gpuScore)
-            json.put("gpu", gpuObj)
+            sb.append(",\n  \"gpu\": {\n")
+            sb.append("    \"avgFps\": ${gpu.avgFps},\n")
+            sb.append("    \"low1Fps\": ${gpu.low1Fps},\n")
+            sb.append("    \"low01Fps\": ${gpu.low01Fps},\n")
+            sb.append("    \"frameStabilityPercent\": ${gpu.frameStabilityPercent},\n")
+            sb.append("    \"particleCount\": ${gpu.particleCount},\n")
+            sb.append("    \"gpuScore\": ${gpu.gpuScore}\n")
+            sb.append("  }")
         }
 
-        return json.toString(2)
+        sb.append("\n}")
+        return sb.toString()
     }
 }

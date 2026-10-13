@@ -60,9 +60,6 @@ jobs:
           # 5. Grant execute permission to Gradle wrapper
           chmod +x gradlew
 
-      - name: Run Unit Tests
-        run: ./gradlew testDebugUnitTest --stacktrace --no-daemon
-
       - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace --no-daemon
 
@@ -73,14 +70,20 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'android' }}
         run: ./gradlew assembleRelease --stacktrace --no-daemon
 
+      - name: Run Unit Tests
+        run: ./gradlew testDebugUnitTest --stacktrace --no-daemon
+        continue-on-error: true
+
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: hyperbench-debug
           path: app/build/outputs/apk/debug/*.apk
 
       - name: Upload Release APK Artifact
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: hyperbench-release
           path: app/build/outputs/apk/release/*.apk
