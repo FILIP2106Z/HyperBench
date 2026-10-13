@@ -30,14 +30,38 @@ jobs:
 
       - name: Setup Android SDK Licenses
         run: |
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+          # Ensure Android SDK licenses directory exists across potential SDK paths
+          for sdk_dir in "$ANDROID_HOME" "$ANDROID_SDK_ROOT" "/usr/local/lib/android/sdk"; do
+            if [ -n "$sdk_dir" ] && [ -d "$sdk_dir" ]; then
+              mkdir -p "$sdk_dir/licenses"
+              printf "\n24333f8a63b6825ea9c5514f83c2829b004d1fee\nd56f5187479451eabf01fb78af6dfcb131a6481e\n84831b9409646a532e303d721609403d3da3e1e4\n" > "$sdk_dir/licenses/android-sdk-license"
+              printf "\n84831b9409646a532e303d721609403d3da3e1e4\n79944887372b10c57a7e48b53594884cc79e273f\n" > "$sdk_dir/licenses/android-sdk-preview-license"
+              printf "\n601085b94cd77f0b54ff86406955d99379430f80\n" > "$sdk_dir/licenses/android-googletv-license"
+              printf "\n859f317696f67ef3d7f30a50a5560e7834b43903\n" > "$sdk_dir/licenses/android-sdk-arm-dbt-license"
+              printf "\nd975f751698a77b662f1254ddbeed3901e976f5a\n" > "$sdk_dir/licenses/intel-android-extra-license"
+              printf "\ne9acab5b5f15c81849647dc23b7b0498b9434973\n" > "$sdk_dir/licenses/mips-android-sysimage-license"
+              printf "\n33b6a2b64920402e80233466dc7d471f1ee02001\n" > "$sdk_dir/licenses/google-gdk-license"
+            fi
+          done
+
+          # Also accept via sdkmanager if present
+          if command -v sdkmanager >/dev/null 2>&1; then
+            yes | sdkmanager --licenses || true
+          elif [ -n "$ANDROID_HOME" ] && [ -f "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+          fi
 
       - name: Setup Environment and Keystores
+        env:
+          RAW_STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          RAW_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
         run: |
           # 1. Ensure .env exists for Secrets Gradle Plugin
           touch .env
-          if [ ! -f .env.example ]; then
-            touch .env.example
+          if [ -f .env.example ]; then
+            cp -n .env.example .env || true
           fi
 
           # 2. Ensure google-services.json exists so Google Services plugin does not fail
@@ -45,29 +69,39 @@ jobs:
             echo '{"project_info":{"project_number":"0","project_id":"hyperbench-foss","storage_bucket":""},"client":[{"client_info":{"mobilesdk_app_id":"1:0:android:0","android_client_info":{"package_name":"com.aistudio.hyperbench.kxmpzq"}},"api_key":[{"current_key":""}],"services":{}}],"configuration_version":"1"}' > app/google-services.json
           fi
 
-          # 3. Generate debug.keystore if missing (since it is excluded by .gitignore)
-          if [ ! -f debug.keystore ]; then
+          # 3. Setup debug.keystore
+          if [ -n "$DEBUG_KEYSTORE_BASE64" ]; then
+            echo "Decoding DEBUG_KEYSTORE_BASE64..."
+            echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > debug.keystore
+          elif [ ! -f debug.keystore ]; then
             echo "Generating debug.keystore..."
             keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
 
-          # 4. Generate release keystore if missing or use CI fallback
-          if [ ! -f my-upload-key.jks ]; then
+          # 4. Setup release keystore
+          if [ -n "$RELEASE_KEYSTORE_BASE64" ]; then
+            echo "Decoding RELEASE_KEYSTORE_BASE64..."
+            echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > my-upload-key.jks
+          elif [ ! -f my-upload-key.jks ]; then
             echo "Generating fallback my-upload-key.jks..."
             keytool -genkey -v -keystore my-upload-key.jks -storepass android -alias upload -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=HyperBench FOSS,O=AIStudio,C=US"
           fi
 
-          # 5. Grant execute permission to Gradle wrapper
+          # 5. Export environment variables to GITHUB_ENV for all subsequent steps
+          RESOLVED_STORE_PASS="${RAW_STORE_PASSWORD:-android}"
+          RESOLVED_KEY_PASS="${RAW_KEY_PASSWORD:-android}"
+
+          echo "KEYSTORE_PATH=$GITHUB_WORKSPACE/my-upload-key.jks" >> "$GITHUB_ENV"
+          echo "STORE_PASSWORD=$RESOLVED_STORE_PASS" >> "$GITHUB_ENV"
+          echo "KEY_PASSWORD=$RESOLVED_KEY_PASS" >> "$GITHUB_ENV"
+
+          # 6. Grant execute permission to Gradle wrapper
           chmod +x gradlew
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace --no-daemon
 
       - name: Build Release APK
-        env:
-          KEYSTORE_PATH: ${{ github.workspace }}/my-upload-key.jks
-          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD || 'android' }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'android' }}
         run: ./gradlew assembleRelease --stacktrace --no-daemon
 
       - name: Run Unit Tests
@@ -80,6 +114,7 @@ jobs:
         with:
           name: hyperbench-debug
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: warn
 
       - name: Upload Release APK Artifact
         uses: actions/upload-artifact@v4
@@ -87,6 +122,7 @@ jobs:
         with:
           name: hyperbench-release
           path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: warn
 
       - name: Create GitHub Release (Tags only)
         if: startsWith(github.ref, 'refs/tags/')
