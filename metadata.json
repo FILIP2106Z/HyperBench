@@ -1,0 +1,6 @@
+{
+  "name": "HyperBench",
+  "description": "Native CPU, GPU, RAM bandwidth, and storage benchmark with real-time frame timing analysis, combined stress test, and multi-tier hardware scoring system.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
