@@ -2,9 +2,10 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ main, master ] # Uruchom przy każdympushu do głównej gałęzi
+    branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch: # Umożliwia ręczne odpalenie budowania w aplikacji lub przeglądarce
 
 jobs:
   build:
@@ -18,7 +19,7 @@ jobs:
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
-        java-version: '17' # Dostosuj wersję Javy do wymagań swojego projektu (np. 11, 17, 21)
+        java-version: '17'
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
@@ -26,7 +27,6 @@ jobs:
     - name: Build Debug APK
       run: ./gradlew assembleDebug
 
-    # Opcjonalnie: Zapisanie pliku APK, aby można go było pobrać z zakładki "Actions"
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
