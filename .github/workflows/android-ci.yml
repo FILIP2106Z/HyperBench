@@ -21,24 +21,57 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
           cache: gradle
 
-      - name: Grant Execute Permission for Gradlew
-        run: chmod +x gradlew
+      - name: Setup Android SDK Licenses
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+
+      - name: Setup Environment and Keystores
+        run: |
+          # 1. Ensure .env exists for Secrets Gradle Plugin
+          touch .env
+          if [ ! -f .env.example ]; then
+            touch .env.example
+          fi
+
+          # 2. Ensure google-services.json exists so Google Services plugin does not fail
+          if [ ! -f app/google-services.json ]; then
+            echo '{"project_info":{"project_number":"0","project_id":"hyperbench-foss","storage_bucket":""},"client":[{"client_info":{"mobilesdk_app_id":"1:0:android:0","android_client_info":{"package_name":"com.aistudio.hyperbench.kxmpzq"}},"api_key":[{"current_key":""}],"services":{}}],"configuration_version":"1"}' > app/google-services.json
+          fi
+
+          # 3. Generate debug.keystore if missing (since it is excluded by .gitignore)
+          if [ ! -f debug.keystore ]; then
+            echo "Generating debug.keystore..."
+            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+          # 4. Generate release keystore if missing or use CI fallback
+          if [ ! -f my-upload-key.jks ]; then
+            echo "Generating fallback my-upload-key.jks..."
+            keytool -genkey -v -keystore my-upload-key.jks -storepass android -alias upload -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=HyperBench FOSS,O=AIStudio,C=US"
+          fi
+
+          # 5. Grant execute permission to Gradle wrapper
+          chmod +x gradlew
 
       - name: Run Unit Tests
-        run: ./gradlew testDebugUnitTest --stacktrace
+        run: ./gradlew testDebugUnitTest --stacktrace --no-daemon
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug --stacktrace --no-daemon
 
       - name: Build Release APK
-        run: ./gradlew assembleRelease --stacktrace
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/my-upload-key.jks
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD || 'android' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'android' }}
+        run: ./gradlew assembleRelease --stacktrace --no-daemon
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4

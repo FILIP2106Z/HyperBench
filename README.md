@@ -32,15 +32,18 @@ HyperBench is an open-source hardware benchmarking application built with Kotlin
 ## 🛠️ Building from Source
 
 ### Prerequisites
-- JDK 17 or higher
+- JDK 21 or higher (required by Gradle 9.3 & Android SDK 36)
 - Android SDK 36 (compileSdk 36, minSdk 24)
-- Gradle 9.3+
+- Gradle 9.3+ (or use included `./gradlew`)
 
 ### Local Build Commands
 ```bash
 # Clone the repository
 git clone https://github.com/your-username/hyperbench.git
 cd hyperbench
+
+# Ensure debug.keystore exists (if cloning fresh)
+keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 
 # Run unit tests
 ./gradlew testDebugUnitTest
@@ -49,7 +52,7 @@ cd hyperbench
 ./gradlew assembleDebug
 
 # Build Release APK
-./gradlew assembleRelease
+STORE_PASSWORD=android KEY_PASSWORD=android ./gradlew assembleRelease
 ```
 The compiled APK will be located at:
 `app/build/outputs/apk/debug/app-debug.apk`
