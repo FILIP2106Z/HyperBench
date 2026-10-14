@@ -76,7 +76,9 @@ data class UiState(
     val exportJsonString: String? = null,
     val hardwareProfile: HardwareProfile? = null,
     val isUploadingRanking: Boolean = false,
-    val rankingUploadStatus: String? = null
+    val rankingUploadStatus: String? = null,
+    val privilegedDetails: Map<String, String> = emptyMap(),
+    val privilegedActionMessage: String? = null
 )
 
 class BenchmarkViewModel(private val context: Context) : ViewModel() {
@@ -221,8 +223,50 @@ class BenchmarkViewModel(private val context: Context) : ViewModel() {
 
     fun setPrivilegedOverride(mode: String?) {
         telemetryManager.simulatedElevatedMode = mode
-        val tele = telemetryManager.readLiveTelemetry()
-        _uiState.value = _uiState.value.copy(liveTelemetry = tele)
+        refreshPrivilegedStatus()
+    }
+
+    fun requestRootAccess(onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            val res = telemetryManager.requestRootPermission()
+            if (res.isSuccess) {
+                val tele = telemetryManager.readLiveTelemetry()
+                val metrics = telemetryManager.readPrivilegedHardwareMetrics()
+                _uiState.value = _uiState.value.copy(
+                    liveTelemetry = tele,
+                    privilegedDetails = metrics,
+                    privilegedActionMessage = res.getOrNull()
+                )
+                onResult(true, res.getOrNull() ?: "Root Superuser Active")
+            } else {
+                val err = res.exceptionOrNull()?.message ?: "Root request failed"
+                _uiState.value = _uiState.value.copy(privilegedActionMessage = err)
+                onResult(false, err)
+            }
+        }
+    }
+
+    fun openShizukuApp(onResult: (Boolean, String) -> Unit) {
+        val intent = telemetryManager.getShizukuLaunchIntent()
+        if (intent != null) {
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            try {
+                context.startActivity(intent)
+                onResult(true, "Opening Shizuku Manager. Return to HyperBench after starting Shizuku service.")
+            } catch (e: Exception) {
+                onResult(false, "Could not open Shizuku: ${e.message}")
+            }
+        } else {
+            onResult(false, "Shizuku app is not installed (moe.shizuku.privileged.api). Please install Shizuku from GitHub or Play Store.")
+        }
+    }
+
+    fun refreshPrivilegedStatus() {
+        viewModelScope.launch {
+            val tele = telemetryManager.readLiveTelemetry()
+            val metrics = telemetryManager.readPrivilegedHardwareMetrics()
+            _uiState.value = _uiState.value.copy(liveTelemetry = tele, privilegedDetails = metrics)
+        }
     }
 
     fun setGpuParticleCount(count: Int) {

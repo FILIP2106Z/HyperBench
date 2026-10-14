@@ -166,11 +166,11 @@ class BenchmarkController(private val context: Context) {
             BenchmarkType.RAM_ONLY -> ram?.ramScore ?: 0
             BenchmarkType.DISK_ONLY -> disk?.diskScore ?: 0
             BenchmarkType.TOGETHER_STRESS -> {
-                val c = cpu?.totalCpuScore ?: 2000
-                val g = gpu?.gpuScore ?: 2500
-                val r = ram?.ramScore ?: 2000
-                val d = disk?.diskScore ?: 1800
-                ((c * 0.32) + (g * 0.35) + (r * 0.18) + (d * 0.15)).toInt()
+                val c = cpu?.totalCpuScore ?: 1150
+                val g = gpu?.gpuScore ?: 950
+                val r = ram?.ramScore ?: 1100
+                val d = disk?.diskScore ?: 1050
+                (c + g + (r * 0.7) + (d * 0.6)).toInt()
             }
         }
     }

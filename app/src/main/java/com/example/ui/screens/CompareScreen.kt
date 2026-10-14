@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CompareArrows
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -69,24 +70,24 @@ fun CompareScreen(
         onNavigate(AppScreen.HOME)
     }
 
-    val deviceOverall = currentRun?.overallScore ?: 7200
-    val deviceCpu = currentRun?.cpuResult?.totalCpuScore ?: 2600
-    val deviceGpu = currentRun?.gpuResult?.gpuScore ?: 2900
-    val deviceRam = currentRun?.ramResult?.ramScore ?: 2300
-    val deviceDisk = currentRun?.diskResult?.diskScore ?: 2200
+    val deviceOverall = currentRun?.overallScore ?: 3200
+    val deviceCpu = currentRun?.cpuResult?.totalCpuScore ?: 1150
+    val deviceGpu = currentRun?.gpuResult?.gpuScore ?: 950
+    val deviceRam = currentRun?.ramResult?.ramScore ?: 1100
+    val deviceDisk = currentRun?.diskResult?.diskScore ?: 1050
     val deviceStability = if (currentRun?.thermalThrottlingDetected == true) 0.65f else 0.95f
 
-    // Radar chart axes normalized to max reference values
+    // Radar chart axes normalized to desktop reference
     val maxCpu = 8500f
     val maxGpu = 9500f
     val maxRam = 7000f
     val maxDisk = 7500f
 
     val radarAxes = listOf(
-        RadarAxis("CPU", (deviceCpu / maxCpu).coerceIn(0.1f, 1f), (selectedTier.cpuScore / maxCpu).coerceIn(0.1f, 1f)),
-        RadarAxis("GPU", (deviceGpu / maxGpu).coerceIn(0.1f, 1f), (selectedTier.gpuScore / maxGpu).coerceIn(0.1f, 1f)),
-        RadarAxis("RAM", (deviceRam / maxRam).coerceIn(0.1f, 1f), (selectedTier.ramScore / maxRam).coerceIn(0.1f, 1f)),
-        RadarAxis("STORAGE", (deviceDisk / maxDisk).coerceIn(0.1f, 1f), (selectedTier.diskScore / maxDisk).coerceIn(0.1f, 1f)),
+        RadarAxis("CPU", (deviceCpu / maxCpu).coerceIn(0.08f, 1f), (selectedTier.cpuScore / maxCpu).coerceIn(0.08f, 1f)),
+        RadarAxis("GPU", (deviceGpu / maxGpu).coerceIn(0.08f, 1f), (selectedTier.gpuScore / maxGpu).coerceIn(0.08f, 1f)),
+        RadarAxis("RAM", (deviceRam / maxRam).coerceIn(0.08f, 1f), (selectedTier.ramScore / maxRam).coerceIn(0.08f, 1f)),
+        RadarAxis("STORAGE", (deviceDisk / maxDisk).coerceIn(0.08f, 1f), (selectedTier.diskScore / maxDisk).coerceIn(0.08f, 1f)),
         RadarAxis("STABILITY", deviceStability, 0.90f)
     )
 
@@ -117,11 +118,11 @@ fun CompareScreen(
                 }
 
                 Text(
-                    text = "HARDWARE COMPARISON",
-                    fontSize = 15.sp,
+                    text = "PRECISION HARDWARE COMPARISON",
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Black,
                     color = TextPrimary,
-                    letterSpacing = 1.2.sp
+                    letterSpacing = 1.1.sp
                 )
 
                 Spacer(modifier = Modifier.size(48.dp))
@@ -200,7 +201,7 @@ fun CompareScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "MULTI-AXIS RADAR ANALYSIS",
+                            text = "MULTI-AXIS NORMALIZED RADAR",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = CyberCyan
@@ -230,10 +231,10 @@ fun CompareScreen(
             }
         }
 
-        // Delta Scores Breakdown
+        // Precision Delta Scores Breakdown
         item {
             Text(
-                text = "PERFORMANCE DELTA VS ${selectedTier.tierBadge} (${selectedTier.name})",
+                text = "PRECISION DELTA VS ${selectedTier.tierBadge} (${selectedTier.name})",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 color = CyberCyan,
@@ -242,11 +243,64 @@ fun CompareScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                DeltaMetricRow("OVERALL SYSTEM", deviceOverall, selectedTier.overallScore)
-                DeltaMetricRow("CPU COMPUTE", deviceCpu, selectedTier.cpuScore)
-                DeltaMetricRow("GPU & RENDERING", deviceGpu, selectedTier.gpuScore)
-                DeltaMetricRow("RAM BANDWIDTH", deviceRam, selectedTier.ramScore)
-                DeltaMetricRow("STORAGE I/O", deviceDisk, selectedTier.diskScore)
+                PrecisionDeltaMetricRow("OVERALL SYSTEM", deviceOverall, selectedTier.overallScore)
+                PrecisionDeltaMetricRow("CPU COMPUTE", deviceCpu, selectedTier.cpuScore)
+                PrecisionDeltaMetricRow("GPU & RENDERING", deviceGpu, selectedTier.gpuScore)
+                PrecisionDeltaMetricRow("RAM BANDWIDTH", deviceRam, selectedTier.ramScore)
+                PrecisionDeltaMetricRow("STORAGE I/O", deviceDisk, selectedTier.diskScore)
+            }
+        }
+
+        // Subsystem Hardware Telemetry Comparison
+        currentRun?.let { run ->
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, DarkSurfaceVariant)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.CompareArrows, contentDescription = "Comparison", tint = CyberCyan, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "MEASURED TELEMETRY BREAKDOWN",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CyberCyan
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Storage detail
+                        run.diskResult?.let { d ->
+                            DetailRow("Storage Seq Read", "%.1f MB/s".format(d.seqReadMbps), "eMMC: ~240 / UFS 4.0: ~3800 / NVMe: ~7200")
+                            DetailRow("Storage Seq Write", "%.1f MB/s".format(d.seqWriteMbps), "eMMC: ~110 / UFS 4.0: ~3000 / NVMe: ~6500")
+                            DetailRow("4K Random Write", "${d.randomWriteIops} IOPS", "eMMC: ~4k / UFS 4.0: ~80k / NVMe: ~250k")
+                            DetailRow("4K Random Read", "${d.randomReadIops} IOPS", "eMMC: ~8k / UFS 4.0: ~100k / NVMe: ~300k")
+                        }
+
+                        // RAM detail
+                        run.ramResult?.let { r ->
+                            DetailRow("RAM Read Bandwidth", "%.2f GB/s".format(r.readBandwidthGbps), "LPDDR4X: ~14 / LPDDR5X: ~55 / DDR5: ~85")
+                            DetailRow("RAM Access Latency", "%.1f ns".format(r.accessLatencyNs), "Typical: 65 - 110 ns")
+                        }
+
+                        // GPU detail
+                        run.gpuResult?.let { g ->
+                            DetailRow("Average Framerate", "%.1f FPS".format(g.avgFps), "1% Low: %.1f FPS".format(g.low1Fps))
+                            DetailRow("Frame Stability", "%.1f%%".format(g.frameStabilityPercent), "Particles: %,d".format(g.particleCount))
+                        }
+
+                        // CPU detail
+                        run.cpuResult?.let { c ->
+                            DetailRow("Single-Core Throughput", "%.1f MOPS".format(c.singleCoreMops), "Crypto: %.1f MB/s".format(c.cryptoHashMbps))
+                            DetailRow("Multi-Core Throughput", "%.1f MOPS".format(c.multiCoreMops), "Matrix: %.2f GFLOPS".format(c.matrixGflops))
+                        }
+                    }
+                }
             }
         }
 
@@ -279,13 +333,34 @@ fun CompareScreen(
 }
 
 @Composable
-private fun DeltaMetricRow(
+private fun DetailRow(label: String, measured: String, reference: String) {
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(text = label, fontSize = 11.sp, color = TextSecondary)
+            Text(
+                text = measured,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+                color = TextPrimary
+            )
+        }
+        Text(text = reference, fontSize = 9.sp, color = TextMuted)
+    }
+}
+
+@Composable
+private fun PrecisionDeltaMetricRow(
     title: String,
     deviceScore: Int,
     referenceScore: Int
 ) {
     val diff = deviceScore - referenceScore
     val percent = ((diff.toDouble() / referenceScore.coerceAtLeast(1)) * 100.0)
+    val ratio = deviceScore.toDouble() / referenceScore.coerceAtLeast(1)
     val isAhead = diff >= 0
     val deltaColor = if (isAhead) MatrixGreen else DangerRed
     val sign = if (isAhead) "+" else ""
@@ -308,18 +383,33 @@ private fun DeltaMetricRow(
                 fontFamily = FontFamily.Monospace,
                 color = TextPrimary
             )
+            Text(
+                text = "Ratio: %.2fx".format(ratio),
+                fontSize = 10.sp,
+                fontFamily = FontFamily.Monospace,
+                color = TextMuted
+            )
         }
 
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(6.dp))
-                .background(deltaColor.copy(alpha = 0.15f))
-                .padding(horizontal = 8.dp, vertical = 4.dp)
-        ) {
+        Column(horizontalAlignment = Alignment.End) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(deltaColor.copy(alpha = 0.15f))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = "$sign%.1f%%".format(percent),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    color = deltaColor
+                )
+            }
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = "$sign%.1f%%".format(percent),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
+                text = "$sign%,d pts".format(diff),
+                fontSize = 10.sp,
                 fontFamily = FontFamily.Monospace,
                 color = deltaColor
             )

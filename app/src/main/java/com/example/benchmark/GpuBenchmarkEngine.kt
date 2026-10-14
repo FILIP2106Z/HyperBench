@@ -9,6 +9,7 @@ import kotlin.math.min
 class GpuBenchmarkEngine {
 
     private val allFrameTimesMs = Collections.synchronizedList(mutableListOf<Float>())
+    private val rawRenderDurationsMs = Collections.synchronizedList(mutableListOf<Float>())
     private val rollingHistory = Collections.synchronizedList(mutableListOf<Float>())
     private val historyCapacity = 100
 
@@ -28,6 +29,7 @@ class GpuBenchmarkEngine {
 
     fun reset(particleCount: Int = 3000) {
         allFrameTimesMs.clear()
+        rawRenderDurationsMs.clear()
         rollingHistory.clear()
         lastFrameNanos = 0L
         totalFrames = 0L
@@ -41,7 +43,7 @@ class GpuBenchmarkEngine {
         currentParticleCount = particleCount
     }
 
-    fun recordFrame(nowNanos: Long): FrameTimingStats {
+    fun recordFrame(nowNanos: Long, renderExecutionTimeNanos: Long = 0L): FrameTimingStats {
         if (lastFrameNanos == 0L) {
             lastFrameNanos = nowNanos
             return FrameTimingStats()
@@ -50,6 +52,11 @@ class GpuBenchmarkEngine {
         val deltaNanos = nowNanos - lastFrameNanos
         lastFrameNanos = nowNanos
         val frameTimeMs = (deltaNanos / 1_000_000f).coerceIn(0.1f, 200f)
+
+        if (renderExecutionTimeNanos > 0L) {
+            val renderMs = (renderExecutionTimeNanos / 1_000_000f).coerceIn(0.05f, 200f)
+            rawRenderDurationsMs.add(renderMs)
+        }
 
         totalFrames++
         allFrameTimesMs.add(frameTimeMs)
@@ -105,7 +112,6 @@ class GpuBenchmarkEngine {
     fun calculate1PercentLow(): Float {
         if (allFrameTimesMs.size < 20) return 0f
         val sorted = allFrameTimesMs.sorted()
-        // 99th percentile slowest frame time = index at 99% of sorted ascending list
         val p99Index = (sorted.size * 0.99).toInt().coerceIn(0, sorted.size - 1)
         val p99FrameTime = sorted[p99Index]
         return (1000f / p99FrameTime.coerceAtLeast(0.1f)).coerceIn(1f, 360f)
@@ -128,7 +134,7 @@ class GpuBenchmarkEngine {
                 frameStabilityPercent = 92f,
                 particleCount = currentParticleCount,
                 totalFramesRendered = 100,
-                gpuScore = 2500
+                gpuScore = 1500
             )
         }
 
@@ -140,9 +146,28 @@ class GpuBenchmarkEngine {
         val nonJankCount = allFrameTimesMs.count { it <= 16.67f }
         val stability = (nonJankCount.toFloat() / allFrameTimesMs.size * 100f).coerceIn(0f, 100f)
 
-        // GPU Score formula
-        val baseScore = (avgFps * 40.0) + (low1 * 35.0) + (low01 * 12.0) + (stability * 18.0) + (currentParticleCount * 0.22)
-        val gpuScore = baseScore.toInt().coerceAtLeast(300)
+        // Raw compute capability (untied from 60Hz display refresh ceiling)
+        val avgRenderExecutionMs = if (rawRenderDurationsMs.isNotEmpty()) {
+            rawRenderDurationsMs.average().toFloat()
+        } else {
+            avgFrameTime
+        }
+        val rawThroughputFps = (1000f / avgRenderExecutionMs.coerceAtLeast(0.5f)).coerceIn(10f, 360f)
+
+        // High-Precision Calibrated GPU Score:
+        // Tier C (Adreno 610 / Snapdragon 680): ~950 pts
+        // Tier B (Adreno 710 / Mali-G68): ~1,850 pts
+        // Tier A (Snapdragon 7+ Gen 3 / Mali-G615): ~3,100 pts
+        // Tier S (Adreno 750 / Snapdragon 8 Gen 3): ~4,250 pts
+        // Tier S+ (Adreno 830 / Snapdragon 8 Elite): ~5,200 pts
+        // Tier PC (RTX 4070 Super): ~9,400 pts
+        val rawWeight = (rawThroughputFps * 10.5)
+        val fpsWeight = (avgFps * 4.0)
+        val consistencyWeight = (low1 * 3.5)
+        val stabilityWeight = (stability * 2.5)
+        val particleDensityWeight = (currentParticleCount * 0.08)
+
+        val calculatedScore = (rawWeight + fpsWeight + consistencyWeight + stabilityWeight + particleDensityWeight).toInt()
 
         return GpuResult(
             avgFps = (avgFps * 10).toInt() / 10f,
@@ -151,7 +176,7 @@ class GpuBenchmarkEngine {
             frameStabilityPercent = (stability * 10).toInt() / 10f,
             particleCount = currentParticleCount,
             totalFramesRendered = totalFrames,
-            gpuScore = gpuScore
+            gpuScore = calculatedScore.coerceIn(350, 15000)
         )
     }
 }

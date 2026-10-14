@@ -410,17 +410,19 @@ private fun LiveHardwareTelemetryCard(
                 }
 
                 // Privileged status pill
+                val isElevated = telemetry.privilegedAccess.contains("Root") || telemetry.privilegedAccess.contains("Shizuku")
+                val pillColor = if (isElevated) MatrixGreen else CyberCyan
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .background(MatrixGreen.copy(alpha = 0.15f))
+                        .background(pillColor.copy(alpha = 0.15f))
                         .clickable { onConfigureDrivers() }
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Security, contentDescription = "Security", tint = MatrixGreen, modifier = Modifier.size(11.dp))
+                        Icon(Icons.Default.Security, contentDescription = "Security", tint = pillColor, modifier = Modifier.size(11.dp))
                         Spacer(modifier = Modifier.width(3.dp))
-                        Text(text = telemetry.privilegedAccess, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MatrixGreen)
+                        Text(text = telemetry.privilegedAccess, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = pillColor)
                     }
                 }
             }

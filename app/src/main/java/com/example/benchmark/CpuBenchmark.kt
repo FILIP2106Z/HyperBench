@@ -47,20 +47,20 @@ class CpuBenchmark {
             ((multiCoreMops / (singleCoreMops * coreCount)).toFloat()).coerceIn(0.2f, 1.0f)
         } else 0.5f
 
-        val singleCoreScore = ((singleCoreMops * 18.0) + (matrixGflops * 45.0) + (cryptoMbps * 3.5)).toInt()
-        val multiCoreScore = ((multiCoreMops * 7.5) + (matrixGflops * coreCount * 22.0)).toInt()
+        val singleCoreScore = ((singleCoreMops * 14.0) + (matrixGflops * 55.0) + (cryptoMbps * 2.8) + 120.0).toInt()
+        val multiCoreScore = ((multiCoreMops * 8.2) + (matrixGflops * coreCount * 18.0) + (cryptoMbps * coreCount * 0.9) + 250.0).toInt()
         val totalCpuScore = ((singleCoreScore * 0.35) + (multiCoreScore * 0.65)).toInt()
 
         CpuResult(
-            singleCoreScore = singleCoreScore.coerceAtLeast(150),
-            multiCoreScore = multiCoreScore.coerceAtLeast(350),
+            singleCoreScore = singleCoreScore.coerceIn(200, 15000),
+            multiCoreScore = multiCoreScore.coerceIn(500, 35000),
             singleCoreMops = (singleCoreMops * 100).toInt() / 100.0,
             multiCoreMops = (multiCoreMops * 100).toInt() / 100.0,
             scalingEfficiency = (scalingEfficiency * 100).toInt() / 100f,
             coreCount = coreCount,
             matrixGflops = (matrixGflops * 100).toInt() / 100.0,
             cryptoHashMbps = (cryptoMbps * 100).toInt() / 100.0,
-            totalCpuScore = totalCpuScore.coerceAtLeast(400)
+            totalCpuScore = totalCpuScore.coerceIn(400, 25000)
         )
     }
 

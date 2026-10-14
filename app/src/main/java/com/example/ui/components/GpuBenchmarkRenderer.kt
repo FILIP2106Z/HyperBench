@@ -103,11 +103,13 @@ fun GpuBenchmarkRenderer(
     var rotationAngleX by remember { mutableStateOf(0f) }
     var rotationAngleY by remember { mutableStateOf(0f) }
 
+    var lastExecutionNanos by remember { mutableStateOf(0L) }
+
     // Driving high-refresh animation loop
     LaunchedEffect(engine, particleCount) {
         while (true) {
             withFrameNanos { nowNanos ->
-                val stats = engine.recordFrame(nowNanos)
+                val stats = engine.recordFrame(nowNanos, lastExecutionNanos)
                 onFrameStats(stats)
                 rotationAngleX += 0.02f
                 rotationAngleY += 0.028f
@@ -117,6 +119,7 @@ fun GpuBenchmarkRenderer(
     }
 
     Canvas(modifier = modifier.fillMaxSize()) {
+        val renderStartNanos = System.nanoTime()
         val w = size.width
         val h = size.height
         val cx = w / 2f
@@ -244,5 +247,6 @@ fun GpuBenchmarkRenderer(
                 style = Stroke(width = 2.5f)
             )
         }
+        lastExecutionNanos = System.nanoTime() - renderStartNanos
     }
 }

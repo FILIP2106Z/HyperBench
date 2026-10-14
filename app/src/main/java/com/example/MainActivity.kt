@@ -254,8 +254,21 @@ fun BenchmarkApp(viewModel: BenchmarkViewModel) {
                     currentBackend = uiState.selectedGpuBackend,
                     currentDriver = uiState.selectedDriverProfile,
                     liveTelemetry = uiState.liveTelemetry,
+                    privilegedDetails = uiState.privilegedDetails,
+                    privilegedActionMessage = uiState.privilegedActionMessage,
                     onSelectBackend = { viewModel.setGpuBackend(it) },
                     onSelectDriver = { viewModel.setDriverProfile(it) },
+                    onRequestRoot = {
+                        viewModel.requestRootAccess { success, msg ->
+                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    onOpenShizuku = {
+                        viewModel.openShizukuApp { success, msg ->
+                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    onRefreshPrivileged = { viewModel.refreshPrivilegedStatus() },
                     onTogglePrivilegedOverride = { viewModel.setPrivilegedOverride(it) },
                     onNavigate = { viewModel.navigateTo(it) }
                 )
